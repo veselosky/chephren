@@ -1,0 +1,10 @@
+# When developing on this project, create a virtualenv and install this
+# requirements file with `pip install -r dev-requirements.txt`
+# These packages are NOT required to install or use the project, only
+# if you are planning to make changes to it.
+flake8
+pep8
+pyflakes
+pytest
+sphinx
+tox
