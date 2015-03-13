@@ -29,9 +29,11 @@ import os
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-	'chephren.website'
+	'chephren.website',
 ]
 primary_domain = 'website'
+base_url = 'http://localhost:8000'
+author = 'Vince Veselosky'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
