@@ -309,6 +309,8 @@ class WebsiteDomain(Domain):
         """
         if app.builder.name != 'html':
             return
+        if not app.config.feed_filename:
+            return
 
         domain = app.env.domains[WebsiteDomain.name]
         feed = domain.data['mainfeed']
