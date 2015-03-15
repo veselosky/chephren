@@ -28,6 +28,6 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`website-bydate`
+* :archive:`Date Index <website-bydate>`
 * :ref:`search`
 

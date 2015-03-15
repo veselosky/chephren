@@ -15,4 +15,5 @@ def setup(app):
     app.connect('builder-inited', WebsiteDomain.on_builder_inited)
     app.connect('html-page-context', WebsiteDomain.on_html_page_context)
     app.connect('build-finished', WebsiteDomain.on_build_finished)
+    app.connect('missing-reference', WebsiteDomain.on_missing_reference)
 

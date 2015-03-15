@@ -1,5 +1,24 @@
 """
 This module contains a Sphinx Domain for web sites.
+
+Some clues for developers
+===============================
+
+This domain uses Sphinx's indexing infrastructure to create a catalog of
+articles. That catalog is then used to produce standard web site features
+like category pages and RSS feeds. As with other domains, the index data
+is all stored in ``domain.data``. The indexing system is designed to index
+abstract objects that are being documented. We are making the document
+itself be the object.
+
+During HTML generation, Sphinx automatically produces pages for each index.
+These become our Archive pages.
+
+It turns out domain index pages are not referencable using the standard ``ref``
+role, because the ref role is implemented by the "std" domain. Python index
+pages are referencable that way only because the std domain is hard coded to
+know things about the Python domain. To make its index pages referencable,
+we have added the ``archive`` role.
 """
 import os.path
 import codecs
@@ -8,16 +27,23 @@ from docutils import nodes
 from sphinx.domains import Domain, Index, ObjType
 from sphinx.directives import Directive, directives
 from sphinx.locale import l_
-from sphinx.roles import XRefRole
+from sphinx.roles import XRefRole as SphinxXRefRole
+from sphinx.util.nodes import make_refnode
 
 
+"""We create a namedtuple called ``IndexEntry`` for the standard indexing
+data structure, for ease of reading."""
 IndexEntry = namedtuple('IndexEntry',
     "title, subtype, docname, target, extra, qualifier, description"
 )  # noqa
 
 
+class XRefRole(SphinxXRefRole):
+    innernodeclass = nodes.emphasis
+
+
 class ArticleNode(nodes.Invisible, nodes.Element):
-    """Represent article directive content and options in document tree."""
+    """ArticleNode holds our metadata in the document tree."""
     pass
 
 
@@ -26,7 +52,14 @@ def _split(a):
 
 
 class ArticleDirective(Directive):
-    """Handle ``article`` directives."""
+    """ArticleDirective allows writers to assign metadata for indexing.
+
+    A document is marked as interesting to this domain using the ``article``
+    directive. The ``article`` directive provides the metadata used for
+    indexing the document, though for some standard fields we examine the
+    document itself. The article directive leaves no trace in the output, it
+    is purely there to provide metadata to the indexing system.
+    """
 
     has_content = True
     required_arguments = 0
@@ -105,35 +138,44 @@ class WebsiteDomain(Domain):
 
     object_types = {'article': ObjType(l_('article'), 'article')}
     directives = {'article': ArticleDirective}
-    roles = {'article': XRefRole()}
+    roles = {'article': XRefRole(), 'archive': XRefRole()}
 
     # Note: affected by html_domain_indices setting
     indices = [ChronologicalIndex]
 
     initial_data = {
+        'articles': {},  # docname -> ixentry
         'by_date': {},  # date -> docname, objtype
     }
 
     def make_index_entry_for(self, docname, doctree):
-        """Generate an IndexEntry structure for a given document."""
+        """Generates an IndexEntry structure for a given document."""
         # FIXME possible to have no title? Metadata overrides?
         title = doctree.next_node(nodes.title).astext()
-        # FIXME. References not resolved yet. Header targets not in place.
-        # May not be any. May need to call from doctree-resolved event.
-        target = doctree.next_node(nodes.target)['ids'][0]
+        target = doctree.next_node(nodes.section)['ids'][0]
         extra = ''
         qualifier = ''
         description = ''  # TODO Set description
-        return IndexEntry(title, 0, docname, target, extra, qualifier, description)
+        return IndexEntry(title, 0, docname, target,
+                          extra, qualifier, description)
 
     def process_doc(self, env, docname, doctree):
+        """Adds documents to the domain indexes.
+
+        The domain is given the chance to visit each document just before the
+        doctree-read event fires. We use this opportunity to
+        examine the document for relevant metadata and add it to the catalog.
+
+        """
         self.env = env
+        env.app.debug("[Website] processing doc %s" % docname)
         article_node = doctree.next_node(ArticleNode)
         if not article_node:
             return
 
         # Create the index entry
         entry = self.make_index_entry_for(docname, doctree)
+        self.data['articles'][docname] = entry
         for index in self.indices:
             if hasattr(index, 'add_article'):
                 index(self).add_article(article_node, entry, doctree)
@@ -149,6 +191,38 @@ class WebsiteDomain(Domain):
 
         # These nodes have no output, just remove them
         article_node.replace_self([])
+
+    def clear_doc(self, docname):
+        """TODO clear_doc"""
+
+    def resolve_xref(self, env, fromdocname, builder,
+                     typ, target, node, contnode):
+        """Called to resolve the targets for ref roles in this domain.
+
+        When Sphinx encounters a role that is registered by this domain,
+        it calls ``resolve_xref`` so that the domain can resolve the
+        reference. If you don't do this correctly, links don't work.
+        """
+        builder.app.debug("[Website] Asked to resolve %s of type %s from %s" %
+                          (target, typ, fromdocname))
+        if target in self.data['articles']:
+            name = self.data['articles'].title
+            return make_refnode(builder, fromdocname, target, target,
+                                contnode, name)
+        if target.startswith(self.name):  # domain index
+            name = 'By Date'  # FIXME Get name from index class
+            return make_refnode(builder, fromdocname, target, '',
+                                contnode, name)
+
+    def resolve_any_xref(self, env, fromdocname, builder, target,
+                         node, contnode):
+        builder.app.debug("[Website] Asked to resolve ANY %s from %s" %
+                          (target, fromdocname))
+
+    @staticmethod
+    def on_missing_reference(app, env, node, contnode):
+        app.debug("[Website] Missing ref %s of type %s" %
+                  (node['reftarget'], node['reftype']))
 
     @staticmethod
     def on_builder_inited(app):
@@ -166,8 +240,8 @@ class WebsiteDomain(Domain):
 
         data = app.env.domaindata[WebsiteDomain.name]
         data['mainfeed'] = feed
-        if not hasattr(data, 'mainfeed_items'):
-            data['mainfeed_items'] = {}
+        if not hasattr(data, 'feeditems'):
+            data['feeditems'] = {}
 
     @staticmethod
     def on_html_page_context(app, pagename, templatename, ctx, doctree):
@@ -191,20 +265,48 @@ class WebsiteDomain(Domain):
             return
 
         item = {'title': ctx.get('title'),
-                'url': app.config.base_url + '/' + ctx['current_page_name'] + ctx['file_suffix'],
+                'url': app.config.base_url + '/' +
+                ctx['current_page_name'] + ctx['file_suffix'],
                 'content': ctx.get('body'),
                 'updated': parse_pubdate(metadata['date'])
                 }
         if 'author' in metadata:
             item['author'] = metadata['author']
 
-        app.env.domaindata[WebsiteDomain.name]['mainfeed_items'][pagename] = item
+        app.env.domaindata[WebsiteDomain.name]['feeditems'][pagename] = item
 
         # provide templates with a way to link to the rss output file
         ctx['rss_link'] = app.config.base_url + '/' + app.config.feed_filename
 
     @staticmethod
     def on_build_finished(app, exc):
+        """Handler for the build-finished event to output atom feeds.
+
+        Field mappings, atom to internal:
+        feed.title: site title
+        feed.updated: time of file generation
+        feed.id: a generated TAG-URI
+        feed.author: from conf
+        feed.link(rel=self): resolve URI
+        feed.link(rel=alternate): calculate depending on feed.
+        feed.category: from conf?
+        feed.contributor: from conf
+        feed.rights: from conf
+        feed.subtitle: from conf
+        feed.icon: from conf
+        feed.logo: from conf
+
+        entry.title: document title
+        entry.updated: meta.updated or meta.date
+        entry.id: a generated TAG URI
+        entry.summary: meta.summary or auto (if configured) or none
+        entry.link(rel=self): resolve URI
+        entry.content: the content (if configured)
+        entry.author: meta.author
+        entry.published: meta.date
+        entry.category: category or tags?
+        entry.rights: from conf, inherit
+        """
         if app.builder.name != 'html':
             return
 
@@ -213,7 +315,7 @@ class WebsiteDomain(Domain):
         index = ChronologicalIndex(domain)
         ixentries = index.get_recent()
         for ix in ixentries:
-            feed.add(**domain.data['mainfeed_items'][ix.docname])
+            feed.add(**domain.data['feeditems'][ix.docname])
 
         path = os.path.join(app.builder.outdir,
                             app.config.feed_filename)
@@ -222,36 +324,3 @@ class WebsiteDomain(Domain):
             outfile.write(feed.to_string())
         finally:
             outfile.close()
-
-
-def generate_atom_feeds(app):
-    """Handler for the html-collect-pages event to output atom feeds.
-
-    Field mappings, atom to internal:
-    feed.title: site title
-    feed.updated: time of file generation
-    feed.id: a generated TAG-URI
-    feed.author: from conf
-    feed.link(rel=self): resolve URI
-    feed.link(rel=alternate): calculate depending on feed. site url, category page, etc.
-    feed.category: from conf?
-    feed.contributor: from conf
-    feed.rights: from conf
-    feed.subtitle: from conf
-    feed.icon: from conf
-    feed.logo: from conf
-
-    entry.title: document title
-    entry.updated: meta.updated or meta.date
-    entry.id: a generated TAG URI
-    entry.summary: meta.summary or auto (if configured) or none
-    entry.link(rel=self): resolve URI
-    entry.content: the content (if configured)
-    entry.author: meta.author
-    entry.published: meta.date
-    entry.category: category or tags?
-    entry.rights: from conf, inherit
-
-    """
-    # must return (pagename, context, templatename)
-    # domain = app.env.domains[WebsiteDomain.name]
