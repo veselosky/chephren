@@ -37,6 +37,9 @@ setup(
     # could also include download_url, classifiers, etc.
 
     install_requires=[
+        'werkzeug >= 0.10',
+        'dateutil',
+        'pytz',
     ],
     tests_require=[
         'pytest',

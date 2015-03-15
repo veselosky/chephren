@@ -23,12 +23,16 @@ we have added the ``archive`` role.
 import os.path
 import codecs
 from collections import namedtuple
+from dateutil.parser import parse as parse_datetime
 from docutils import nodes
+
+from pytz import timezone
 from sphinx.domains import Domain, Index, ObjType
 from sphinx.directives import Directive, directives
 from sphinx.locale import l_
 from sphinx.roles import XRefRole as SphinxXRefRole
 from sphinx.util.nodes import make_refnode
+from werkzeug.contrib.atom import AtomFeed
 
 
 """We create a namedtuple called ``IndexEntry`` for the standard indexing
@@ -103,25 +107,42 @@ class ChronologicalIndex(Index):
         domain's ``process_doc`` method.
         """
         by_date = self.domain.data['by_date']
-        if article['date'] in by_date:
-            by_date[article['date']].append(entry)
+
+        if 'updated' in article:
+            when = self.domain.as_datetime(article['updated'])
         else:
-            by_date[article['date']] = [entry]
+            when = self.domain.as_datetime(article['date'])
+
+        datekey = when.strftime('%Y-%m')
+        if datekey in by_date:
+            by_date[datekey].append((when.isoformat(), entry))
+        else:
+            by_date[datekey] = [(when.isoformat(), entry)]
+
+    def sorted_entries(self, pairs, reverse=False):
+        return [
+            e[1] for e in sorted(pairs,
+                                 cmp=lambda a, b: cmp(a[0], b[0]),
+                                 reverse=reverse
+                                 )
+        ]
 
     def generate(self, docnames=None):
         # FIXME implement docnames filter
         dates = self.domain.data['by_date']
         entries_for_date = []
-        for date in sorted(dates):
-            entries_for_date.append((date, dates[date]))
+        for date in sorted(dates, reverse=True):
+            entries_for_date.append((date,
+                                     self.sorted_entries(dates[date],
+                                                         reverse=True)))
         return (entries_for_date, True)
 
     def get_recent(self, limit=25):
         """Return the index entries for the most recent ``limit`` articles."""
         dates = self.domain.data['by_date']
         entries = []
-        for date in sorted(dates):
-            for entry in dates[date]:
+        for date in sorted(dates, reverse=True):
+            for entry in self.sorted_entries(dates[date], reverse=True):
                 entries.append(entry)
                 if len(entries) >= limit:
                     break
@@ -148,14 +169,30 @@ class WebsiteDomain(Domain):
         'by_date': {},  # date -> docname, objtype
     }
 
+    def as_datetime(self, datestr):
+        """Parse a string to produce a timezone-aware datetime."""
+        zone = timezone(self.env.config.timezone)
+        thedate = parse_datetime(datestr)  # raises ValueError on fail
+        # Really, we can't have one function that can deal with both?
+        if thedate.tzinfo:
+            return thedate.astimezone(zone)
+        elif thedate:
+            return zone.localize(thedate)
+
     def make_index_entry_for(self, docname, doctree):
         """Generates an IndexEntry structure for a given document."""
+        meta = self.env.metadata[docname]
         # FIXME possible to have no title? Metadata overrides?
         title = doctree.next_node(nodes.title).astext()
         target = doctree.next_node(nodes.section)['ids'][0]
-        extra = ''
+        if 'updated' in meta:
+            extra = 'updated ' + \
+                    self.as_datetime(meta['updated']).date().isoformat()
+        else:
+            extra = self.as_datetime(meta['date']).date().isoformat()
+
         qualifier = ''
-        description = ''  # TODO Set description
+        description = meta['description'] if 'description' in meta else ''
         return IndexEntry(title, 0, docname, target,
                           extra, qualifier, description)
 
@@ -167,18 +204,10 @@ class WebsiteDomain(Domain):
         examine the document for relevant metadata and add it to the catalog.
 
         """
-        self.env = env
         env.app.debug("[Website] processing doc %s" % docname)
         article_node = doctree.next_node(ArticleNode)
         if not article_node:
             return
-
-        # Create the index entry
-        entry = self.make_index_entry_for(docname, doctree)
-        self.data['articles'][docname] = entry
-        for index in self.indices:
-            if hasattr(index, 'add_article'):
-                index(self).add_article(article_node, entry, doctree)
 
         # Extract metadata from the doc and stash it in Sphinx's meta.
         meta = env.metadata[docname]
@@ -188,6 +217,15 @@ class WebsiteDomain(Domain):
         meta['is_article'] = True
         for metavar, value in article_node.attlist():
             meta[metavar] = value
+        if not 'description' in meta:
+            meta['description'] = article_node.astext()
+
+        # Create the index entry
+        entry = self.make_index_entry_for(docname, doctree)
+        self.data['articles'][docname] = entry
+        for index in self.indices:
+            if hasattr(index, 'add_article'):
+                index(self).add_article(article_node, entry, doctree)
 
         # These nodes have no output, just remove them
         article_node.replace_self([])
@@ -227,7 +265,6 @@ class WebsiteDomain(Domain):
     @staticmethod
     def on_builder_inited(app):
         """Create the feed container"""
-        from werkzeug.contrib.atom import AtomFeed
         feed = AtomFeed(app.config.project,
                         feed_url=app.config.base_url,
                         id=app.config.base_url,
@@ -248,17 +285,10 @@ class WebsiteDomain(Domain):
         """Here we have access to fully resolved and rendered HTML fragments
         as well as metadata.
         """
-        from datetime import datetime
         if app.builder.name != 'html':
             return
 
-        def parse_pubdate(pubdate):
-            try:
-                date = datetime.strptime(pubdate, '%Y-%m-%d %H:%M')
-            except ValueError:
-                date = datetime.strptime(pubdate, '%Y-%m-%d')
-            return date
-
+        self = app.env.domains[WebsiteDomain.name]
         # Index pages and such don't necessarily have metadata
         metadata = app.env.metadata.get(pagename, {})
         if 'is_article' not in metadata:
@@ -268,7 +298,7 @@ class WebsiteDomain(Domain):
                 'url': app.config.base_url + '/' +
                 ctx['current_page_name'] + ctx['file_suffix'],
                 'content': ctx.get('body'),
-                'updated': parse_pubdate(metadata['date'])
+                'updated': self.as_datetime(metadata['date'])
                 }
         if 'author' in metadata:
             item['author'] = metadata['author']
@@ -277,6 +307,8 @@ class WebsiteDomain(Domain):
 
         # provide templates with a way to link to the rss output file
         ctx['rss_link'] = app.config.base_url + '/' + app.config.feed_filename
+
+        app.debug("[SITE] added context for %s" % pagename)
 
     @staticmethod
     def on_build_finished(app, exc):
