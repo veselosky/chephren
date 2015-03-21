@@ -1,3 +1,17 @@
+# Copyright 2015 Vince Veselosky and contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 This module contains a Sphinx Domain for web sites.
 
@@ -96,7 +110,7 @@ class ArticleDirective(Directive):
         return [node]
 
 
-# TODO implement Year, Month, and Date indexes. Parse date correctly.
+# TODO implement Year, Month, and Date indexes.
 class ChronologicalIndex(Index):
     name = 'bydate'
     localname = 'By Date'
@@ -217,7 +231,7 @@ class WebsiteDomain(Domain):
         meta['is_article'] = True
         for metavar, value in article_node.attlist():
             meta[metavar] = value
-        if not 'description' in meta:
+        if 'description' not in meta:
             meta['description'] = article_node.astext()
 
         # Create the index entry
@@ -306,6 +320,7 @@ class WebsiteDomain(Domain):
         app.env.domaindata[WebsiteDomain.name]['feeditems'][pagename] = item
 
         # provide templates with a way to link to the rss output file
+        # FIXME This should be structured the same as next and previous
         ctx['rss_link'] = app.config.base_url + '/' + app.config.feed_filename
 
         app.debug("[SITE] added context for %s" % pagename)
