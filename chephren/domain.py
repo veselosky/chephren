@@ -167,6 +167,60 @@ class ChronologicalIndex(Index):
         return entries
 
 
+class CategoryIndex(Index):
+    name = 'bycategory'
+    localname = 'By Category'
+    shortname = 'by category'
+
+    def add_article(self, article, entry, doctree):
+        """Add an article object to this index. To be called from the
+        domain's ``process_doc`` method.
+        """
+        if 'category' not in article or not article['category']:
+            return
+
+        by_cat = self.domain.data['by_category']
+        if 'updated' in article:
+            when = self.domain.as_datetime(article['updated'])
+        else:
+            when = self.domain.as_datetime(article['date'])
+
+        for ixkey in article['category']:
+            if ixkey in by_cat:
+                by_cat[ixkey].append((when.isoformat(), entry))
+            else:
+                by_cat[ixkey] = [(when.isoformat(), entry)]
+
+    def sorted_entries(self, pairs, reverse=False):
+        return [
+            e[1] for e in sorted(pairs,
+                                 cmp=lambda a, b: cmp(a[0], b[0]),
+                                 reverse=reverse
+                                 )
+        ]
+
+    def generate(self, docnames=None):
+        # FIXME implement docnames filter
+        cats = self.domain.data['by_category']
+        entries_for_cat = []
+        for cat in sorted(cats):
+            entries_for_cat.append((cat,
+                                   self.sorted_entries(cats[cat],
+                                                       reverse=True)))
+        return (entries_for_cat, True)
+
+    def get_recent(self, category, limit=25):
+        """Return the index entries for the most recent ``limit`` articles."""
+        cats = self.domain.data['by_category']
+        entries = []
+        for entry in self.sorted_entries(cats[category], reverse=True):
+            entries.append(entry)
+            if len(entries) >= limit:
+                break
+
+        return entries
+
+
 class WebsiteDomain(Domain):
     name = "website"
     label = "Website"
@@ -176,11 +230,12 @@ class WebsiteDomain(Domain):
     roles = {'article': XRefRole(), 'archive': XRefRole()}
 
     # Note: affected by html_domain_indices setting
-    indices = [ChronologicalIndex]
+    indices = [ChronologicalIndex, CategoryIndex]
 
     initial_data = {
         'articles': {},  # docname -> ixentry
-        'by_date': {},  # date -> docname, objtype
+        'by_date': {},  # date -> date, ixentry
+        'by_category': {},  # category -> date, ixentry
     }
 
     def as_datetime(self, datestr):
@@ -221,6 +276,7 @@ class WebsiteDomain(Domain):
         env.app.debug("[Website] processing doc %s" % docname)
         article_node = doctree.next_node(ArticleNode)
         if not article_node:
+            env.app.debug("[Website] skipping non-article %s" % docname)
             return
 
         # Extract metadata from the doc and stash it in Sphinx's meta.
@@ -239,6 +295,7 @@ class WebsiteDomain(Domain):
         self.data['articles'][docname] = entry
         for index in self.indices:
             if hasattr(index, 'add_article'):
+                env.app.debug("[Website] adding to index %s" % index.name)
                 index(self).add_article(article_node, entry, doctree)
 
         # These nodes have no output, just remove them
