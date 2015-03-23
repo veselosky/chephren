@@ -16,3 +16,5 @@ about page
 * RSS feeds for your posts
 * Date-based Archive page for your posts
 * A category system with category pages
+
+.. _`Sphinx`: http://sphinx-doc.org/
