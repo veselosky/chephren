@@ -11,8 +11,7 @@ documenting software projects, but it is missing some common features that
 would make it just as good for managing static websites. Features provided by
 Chephren include:
 
-* Marking a distinction between "posts" and utility pages like the search or
-about page
+* Marking a distinction between "posts" and utility pages like the search or about page
 * RSS feeds for your posts
 * Date-based Archive page for your posts
 * A category system with category pages
