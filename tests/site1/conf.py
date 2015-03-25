@@ -10,7 +10,7 @@ import os
 extensions = [
 	'chephren.website',
 ]
-primary_domain = 'website'
+primary_domain = 'blog'
 base_url = 'http://localhost:8000'
 author = 'Vince Veselosky'
 project = u'Chephren Testing Site'

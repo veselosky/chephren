@@ -1,7 +1,7 @@
 Post With Category "Technology"
 ================================
 
-.. article:: 2015-01-03
+.. blogpost:: 2015-01-03
 	:category: Technology
 
 This is a blog post in a subdirectory with a category assigned.

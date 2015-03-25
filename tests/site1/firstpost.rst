@@ -1,7 +1,7 @@
 First Post!
 ========================
 
-.. article:: 2015-01-01
+.. blogpost:: 2015-01-01
 
 This is a first post. It should show up in the site feed and archive pages.
 

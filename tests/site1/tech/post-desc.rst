@@ -1,7 +1,7 @@
 Post with Category "Technology" and Description
 ==================================================
 
-.. article:: 2015-01-03
+.. blogpost:: 2015-01-03
 	:category: Technology
 
 	I am the description that describes a post in "Technology".

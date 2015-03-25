@@ -1,7 +1,7 @@
 Post with Everything but Anchovies
 ====================================
 
-.. article:: 2015-02-01T18:00:00-0500
+.. blogpost:: 2015-02-01T18:00:00-0500
 	:category: Technology, Science
 	:tags: test, another test, one more test
 

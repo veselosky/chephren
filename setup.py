@@ -30,9 +30,9 @@ setup(
     packages=find_packages(),
     author="Vince Veselosky",
     author_email="vince@veselosky.com",
-    description="",
+    description="An extension to Sphinx for managing a blog or static website",
     long_description=README,
-    license="MIT",
+    license="Apache 2.0",
     url="",
     # could also include download_url, classifiers, etc.
 

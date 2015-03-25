@@ -24,10 +24,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   getting-started
+
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :archive:`Date Index <website-bydate>`
 * :ref:`search`
 

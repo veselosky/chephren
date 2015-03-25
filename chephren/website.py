@@ -16,19 +16,19 @@
 This module contains the Sphinx extension.
 """
 
-from .domain import WebsiteDomain
+from .domain import BlogDomain
 
 
 def setup(app):
-    app.add_domain(WebsiteDomain)
+    app.add_domain(BlogDomain)
     app.add_config_value('base_url', '', '')
     app.add_config_value('project_description', '', '')
     app.add_config_value('feed_author', '', '')
     app.add_config_value('feed_filename', 'recent.atom', 'html')
     app.add_config_value('timezone', 'UTC', '')
 
-    app.connect('builder-inited', WebsiteDomain.on_builder_inited)
-    app.connect('html-page-context', WebsiteDomain.on_html_page_context)
-    app.connect('build-finished', WebsiteDomain.on_build_finished)
-    app.connect('missing-reference', WebsiteDomain.on_missing_reference)
+    app.connect('builder-inited', BlogDomain.on_builder_inited)
+    app.connect('html-page-context', BlogDomain.on_html_page_context)
+    app.connect('build-finished', BlogDomain.on_build_finished)
+    app.connect('missing-reference', BlogDomain.on_missing_reference)
 

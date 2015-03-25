@@ -1,7 +1,7 @@
 Post with Date and Time, UTC
 ===============================
 
-.. article:: 2015-01-04T15:00:00Z
+.. blogpost:: 2015-01-04T15:00:00Z
 	:category: Technology
 
 Category: Technology

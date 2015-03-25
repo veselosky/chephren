@@ -19,7 +19,7 @@ Some clues for developers
 ===============================
 
 This domain uses Sphinx's indexing infrastructure to create a catalog of
-articles. That catalog is then used to produce standard web site features
+blog posts. That catalog is then used to produce standard web site features
 like category pages and RSS feeds. As with other domains, the index data
 is all stored in ``domain.data``. The indexing system is designed to index
 abstract objects that are being documented. We are making the document
@@ -221,13 +221,13 @@ class CategoryIndex(Index):
         return entries
 
 
-class WebsiteDomain(Domain):
-    name = "website"
-    label = "Website"
+class BlogDomain(Domain):
+    name = "blog"
+    label = "Blog"
 
     object_types = {'article': ObjType(l_('article'), 'article')}
-    directives = {'article': ArticleDirective}
-    roles = {'article': XRefRole(), 'archive': XRefRole()}
+    directives = {'article': ArticleDirective, 'blogpost': ArticleDirective}
+    roles = {'blogpost': XRefRole(), 'archive': XRefRole()}
 
     # Note: affected by html_domain_indices setting
     indices = [ChronologicalIndex, CategoryIndex]
@@ -273,10 +273,10 @@ class WebsiteDomain(Domain):
         examine the document for relevant metadata and add it to the catalog.
 
         """
-        env.app.debug("[Website] processing doc %s" % docname)
+        env.app.debug("[BLOG] processing doc %s" % docname)
         article_node = doctree.next_node(ArticleNode)
         if not article_node:
-            env.app.debug("[Website] skipping non-article %s" % docname)
+            env.app.debug("[BLOG] skipping non-article %s" % docname)
             return
 
         # Extract metadata from the doc and stash it in Sphinx's meta.
@@ -295,7 +295,7 @@ class WebsiteDomain(Domain):
         self.data['articles'][docname] = entry
         for index in self.indices:
             if hasattr(index, 'add_article'):
-                env.app.debug("[Website] adding to index %s" % index.name)
+                env.app.debug("[BLOG] adding to index %s" % index.name)
                 index(self).add_article(article_node, entry, doctree)
 
         # These nodes have no output, just remove them
@@ -312,7 +312,7 @@ class WebsiteDomain(Domain):
         it calls ``resolve_xref`` so that the domain can resolve the
         reference. If you don't do this correctly, links don't work.
         """
-        builder.app.debug("[Website] Asked to resolve %s of type %s from %s" %
+        builder.app.debug("[BLOG] Asked to resolve %s of type %s from %s" %
                           (target, typ, fromdocname))
         if target in self.data['articles']:
             name = self.data['articles'].title
@@ -325,12 +325,12 @@ class WebsiteDomain(Domain):
 
     def resolve_any_xref(self, env, fromdocname, builder, target,
                          node, contnode):
-        builder.app.debug("[Website] Asked to resolve ANY %s from %s" %
+        builder.app.debug("[BLOG] Asked to resolve ANY %s from %s" %
                           (target, fromdocname))
 
     @staticmethod
     def on_missing_reference(app, env, node, contnode):
-        app.debug("[Website] Missing ref %s of type %s" %
+        app.debug("[BLOG] Missing ref %s of type %s" %
                   (node['reftarget'], node['reftype']))
 
     @staticmethod
@@ -346,7 +346,7 @@ class WebsiteDomain(Domain):
         if app.config.copyright:
             feed.rights = app.config.copyright
 
-        data = app.env.domaindata[WebsiteDomain.name]
+        data = app.env.domaindata[BlogDomain.name]
         data['mainfeed'] = feed
         if not hasattr(data, 'feeditems'):
             data['feeditems'] = {}
@@ -359,7 +359,7 @@ class WebsiteDomain(Domain):
         if app.builder.name != 'html':
             return
 
-        self = app.env.domains[WebsiteDomain.name]
+        self = app.env.domains[BlogDomain.name]
         # Index pages and such don't necessarily have metadata
         metadata = app.env.metadata.get(pagename, {})
         if 'is_article' not in metadata:
@@ -374,7 +374,7 @@ class WebsiteDomain(Domain):
         if 'author' in metadata:
             item['author'] = metadata['author']
 
-        app.env.domaindata[WebsiteDomain.name]['feeditems'][pagename] = item
+        app.env.domaindata[BlogDomain.name]['feeditems'][pagename] = item
 
         # provide templates with a way to link to the rss output file
         # FIXME This should be structured the same as next and previous
@@ -416,7 +416,7 @@ class WebsiteDomain(Domain):
         if not app.config.feed_filename:
             return
 
-        domain = app.env.domains[WebsiteDomain.name]
+        domain = app.env.domains[BlogDomain.name]
         feed = domain.data['mainfeed']
         index = ChronologicalIndex(domain)
         ixentries = index.get_recent()
