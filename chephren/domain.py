@@ -226,7 +226,11 @@ class BlogDomain(Domain):
     label = "Blog"
 
     object_types = {'article': ObjType(l_('article'), 'article')}
-    directives = {'article': ArticleDirective, 'blogpost': ArticleDirective}
+    directives = {
+        'article': ArticleDirective,
+        'blogpost': ArticleDirective,
+        'post': ArticleDirective,
+    }
     roles = {'blogpost': XRefRole(), 'archive': XRefRole()}
 
     # Note: affected by html_domain_indices setting

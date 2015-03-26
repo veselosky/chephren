@@ -20,7 +20,8 @@ as "articles."
 Indices and tables
 ==================
 
-* :archive:`website-bydate` (Should link to By Date archive page)
+* :archive:`blog-bydate` (Should link to By Date archive page)
+* :archive:`Categories <blog-bycategory>` (Should link to Category archive)
 * :ref:`genindex`
 * :ref:`modindex` (Should not exist)
 * :ref:`search`
