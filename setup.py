@@ -38,7 +38,7 @@ setup(
 
     install_requires=[
         'werkzeug >= 0.10',
-        'dateutil',
+        'python-dateutil',
         'pytz',
     ],
     tests_require=[
