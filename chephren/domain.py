@@ -46,6 +46,7 @@ from sphinx.directives import Directive, directives
 from sphinx.locale import l_
 from sphinx.roles import XRefRole as SphinxXRefRole
 from sphinx.util.nodes import make_refnode
+from sphinx.util.osutil import ensuredir
 from werkzeug.contrib.atom import AtomFeed
 
 
@@ -427,9 +428,10 @@ class BlogDomain(Domain):
         for ix in ixentries:
             feed.add(**domain.data['feeditems'][ix.docname])
 
-        path = os.path.join(app.builder.outdir,
-                            app.config.feed_filename)
-        outfile = codecs.open(path, 'w', 'utf-8')
+        filepath = os.path.join(app.builder.outdir,
+                                app.config.feed_filename)
+        ensuredir(os.path.dirname(filepath))
+        outfile = codecs.open(filepath, 'w', 'utf-8')
         try:
             outfile.write(feed.to_string())
         finally:
