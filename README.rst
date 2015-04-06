@@ -6,7 +6,7 @@ Chephren
     page on PyPI.
 
 :Description: An extension to Sphinx for managing blogs and static websites.
-:Status: Alpha - incomplete, backwards incompatible changes likely
+:Status: Alpha - incomplete, not well tested, breaking changes likely
 :Python Support: 2.7, further compatibility to come in beta
 
 Chephren is an extension for `Sphinx`_ that adds features for managing static
