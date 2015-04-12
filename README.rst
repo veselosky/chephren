@@ -19,7 +19,7 @@ Chephren include:
 * Allow posts to bypass the "not found in any toctree" warning
 * RSS feed for your posts
 * Date-based archive page for your posts
-* A category system with an archive listing posts by category
+* Category-based archive page for your posts
 
 .. _`Sphinx`: http://sphinx-doc.org/
 

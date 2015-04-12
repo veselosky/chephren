@@ -1,0 +1,12 @@
+include *.rst
+include *.txt
+include LICENSE
+include tox.ini
+recursive-include docs *.bat
+recursive-include docs *.py
+recursive-include docs *.rst
+recursive-include docs Makefile
+recursive-include tests *.bat
+recursive-include tests *.py
+recursive-include tests *.rst
+recursive-include tests Makefile

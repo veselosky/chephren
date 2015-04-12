@@ -40,6 +40,7 @@ setup(
         'werkzeug >= 0.10',
         'python-dateutil',
         'pytz',
+        'sphinx >= 1.3.0',
     ],
     tests_require=[
         'pytest',
